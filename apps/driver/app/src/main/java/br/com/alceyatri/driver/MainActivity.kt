@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -78,9 +79,6 @@ private fun DriverScreen() {
         "in_progress" -> "Iniciar viagem"
         "completed" -> "Finalizar viagem"
         else -> ""
-    }
-    LaunchedEffect(busy, next) {
-        // Network updates are triggered only by the driver's button.
     }
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
