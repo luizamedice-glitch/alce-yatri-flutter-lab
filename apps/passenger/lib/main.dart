@@ -12,7 +12,7 @@ class PassengerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Alce Yatri Passageiro',
-    theme: ThemeData(colorSchemeSeed: const Color(0xFFFF00BE), useMaterial3: true),
+    theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF00BE)), useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF9F8FB)),
     home: const PassengerHome(),
   );
 }
@@ -100,30 +100,85 @@ class _PassengerHomeState extends State<PassengerHome> {
   @override
   void dispose() { timer?.cancel(); username.dispose(); password.dispose(); super.dispose(); }
 
+  String get statusLabel {
+    switch (ride?['status']) {
+      case 'requested': return 'Procurando motorista';
+      case 'accepted': return 'Motorista a caminho';
+      case 'driver_arrived': return 'Motorista chegou';
+      case 'in_progress': return 'Viagem em andamento';
+      case 'completed': return 'Viagem concluída';
+      case 'cancelled': return 'Corrida cancelada';
+      default: return 'Pronto para viajar';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final status = ride?['status'] as String? ?? 'nenhuma corrida';
-    final active = ride != null && !['completed', 'cancelled'].contains(status);
+    final theme = Theme.of(context);
+    final status = ride?['status'] as String?;
+    final active = status != null && !['completed', 'cancelled'].contains(status);
+    final pink = theme.colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: const Text('Alce Yatri • Passageiro')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Laboratório: corridas simuladas via API compartilhada.'),
-          const SizedBox(height: 12),
-          if (!connected) ...[
-            TextField(controller: username, decoration: const InputDecoration(labelText: 'Usuário de testes')),
-            TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Senha de testes')),
-            FilledButton(onPressed: connect, child: const Text('Conectar à API')),
-          ],
-          Text('Estado: $status', style: Theme.of(context).textTheme.titleLarge),
-          if (ride != null) Text('Corrida: ${ride!['id']}'),
-          if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
-          const SizedBox(height: 20),
-          FilledButton(onPressed: !connected || busy || active ? null : createRide, child: const Text('Solicitar corrida de teste')),
-          OutlinedButton(onPressed: connected ? refresh : null, child: const Text('Atualizar status')),
-        ]),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF9F8FB),
+        title: const Text('ALCE YATRI', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+        actions: [IconButton(onPressed: connected ? refresh : null, icon: const Icon(Icons.refresh), tooltip: 'Atualizar corrida')],
       ),
+      body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
+        Text('Sua próxima viagem começa aqui', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Text('Mobilidade simples, do seu jeito.', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54)),
+        const SizedBox(height: 20),
+        Container(
+          height: 170,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [pink, const Color(0xFF8024B9)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(24)),
+          child: Stack(children: [
+            Positioned(right: 22, top: 22, child: Icon(Icons.route_rounded, color: Colors.white.withOpacity(0.7), size: 96)),
+            Padding(padding: const EdgeInsets.all(22), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 30),
+              const SizedBox(height: 12),
+              const Text('Vamos nessa?', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.bold)),
+              const Text('Solicite uma viagem de teste.', style: TextStyle(color: Colors.white)),
+            ])),
+          ]),
+        ),
+        const SizedBox(height: 20),
+        Card(elevation: 0, color: Colors.white, child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Minha corrida', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Row(children: [
+            CircleAvatar(backgroundColor: pink.withOpacity(0.12), child: Icon(active ? Icons.directions_car : Icons.pin_drop, color: pink)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(statusLabel, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
+          ]),
+          if (ride != null) ...[
+            const SizedBox(height: 8),
+            Text('Identificação: ${ride!['id']}', style: theme.textTheme.bodySmall),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            onPressed: !connected || busy || active ? null : createRide,
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: Text(active ? 'Corrida em andamento' : 'Solicitar corrida'),
+          )),
+          TextButton.icon(onPressed: connected ? refresh : null, icon: const Icon(Icons.sync), label: const Text('Atualizar acompanhamento')),
+        ]))),
+        const SizedBox(height: 14),
+        if (!connected) Card(elevation: 0, color: Colors.white, child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Conectar ao laboratório', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          TextField(controller: username, decoration: const InputDecoration(labelText: 'Usuário', prefixIcon: Icon(Icons.person_outline))),
+          const SizedBox(height: 8),
+          TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Senha', prefixIcon: Icon(Icons.lock_outline))),
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: FilledButton(onPressed: connect, child: const Text('Conectar à API'))),
+        ]))),
+        if (error != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(error!, style: TextStyle(color: theme.colorScheme.error))),
+        const SizedBox(height: 12),
+        const Center(child: Text('AMBIENTE DE TESTES • SEM CORRIDAS REAIS', style: TextStyle(fontSize: 11, color: Colors.black45, letterSpacing: 1))),
+      ])),
     );
   }
 }
