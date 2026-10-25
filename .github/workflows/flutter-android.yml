@@ -1,26 +1,55 @@
-name: Flutter Android debug
+name: Android clients CI
 on:
   push:
     branches: [main]
   workflow_dispatch:
 jobs:
-  build:
+  passenger:
+    name: Passenger Flutter debug
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check Flutter project
-        id: check
+      - id: detect
         run: |
-          if [ -f app/pubspec.yaml ]; then echo 'exists=true' >> "$GITHUB_OUTPUT"; else echo 'exists=false' >> "$GITHUB_OUTPUT"; fi
+          if [ -f apps/passenger/pubspec.yaml ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
       - uses: subosito/flutter-action@v2
-        if: steps.check.outputs.exists == 'true'
+        if: steps.detect.outputs.exists == 'true'
         with:
           channel: stable
-      - name: Build Android debug
-        if: steps.check.outputs.exists == 'true'
-        run: cd app && flutter pub get && flutter build apk --debug
+      - name: Compile passenger
+        if: steps.detect.outputs.exists == 'true'
+        run: cd apps/passenger && flutter pub get && flutter build apk --debug
       - uses: actions/upload-artifact@v4
-        if: steps.check.outputs.exists == 'true'
+        if: steps.detect.outputs.exists == 'true'
         with:
-          name: alce-yatri-debug-apk
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          name: passenger-debug-apk
+          path: apps/passenger/build/app/outputs/flutter-apk/app-debug.apk
+      - name: Await project scaffold
+        if: steps.detect.outputs.exists != 'true'
+        run: echo "Passenger Flutter project not committed yet"
+  driver:
+    name: Driver Kotlin debug
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        run: |
+          if [ -f apps/driver/gradlew ] && [ -f apps/driver/settings.gradle.kts ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-java@v4
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: steps.detect.outputs.exists == 'true'
+      - name: Compile driver
+        if: steps.detect.outputs.exists == 'true'
+        run: cd apps/driver && chmod +x gradlew && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          name: driver-debug-apk
+          path: apps/driver/app/build/outputs/apk/debug/*.apk
+      - name: Await project scaffold
+        if: steps.detect.outputs.exists != 'true'
+        run: echo "Driver Kotlin Gradle project not committed yet"
