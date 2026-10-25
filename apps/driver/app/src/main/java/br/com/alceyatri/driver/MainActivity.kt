@@ -60,6 +60,7 @@ private fun DriverScreen() {
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
+    var consecutiveFailures by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(online, refreshKey) {
         if (online) {
@@ -67,8 +68,12 @@ private fun DriverScreen() {
                 try {
                     val response = withContext(Dispatchers.IO) { api("GET", "/rides/current", username, password) }
                     ride = response.optJSONObject("ride")
+                    consecutiveFailures = 0
                     message = null
-                } catch (e: Exception) { message = "API indisponível: ${e.message}" }
+                } catch (e: Exception) {
+                    consecutiveFailures++
+                    if (consecutiveFailures >= 2) message = "Conexão instável. Tentando reconectar automaticamente…"
+                }
                 delay(3000)
             }
         }
@@ -128,7 +133,7 @@ private fun DriverScreen() {
                                     }
                                     ride = result.getJSONObject("ride")
                                     message = null
-                                } catch (e: Exception) { message = "Erro: ${e.message}" }
+                                } catch (e: Exception) { message = "Não foi possível confirmar a alteração. Atualize antes de tentar novamente: ${e.message}" }
                                 finally { busy = false }
                             }
                         }) { Text(label) }
