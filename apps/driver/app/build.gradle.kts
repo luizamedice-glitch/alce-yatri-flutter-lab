@@ -15,7 +15,7 @@ android {
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig {
-        val apiUrl = providers.gradleProperty("apiUrl").orElse("http://10.0.2.2:8080").get()
+        val apiUrl = providers.gradleProperty("apiUrl").orElse("https://54-94-146-177.sslip.io").get()
         buildConfigField("String", "API_URL", "\"$apiUrl\"")
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
