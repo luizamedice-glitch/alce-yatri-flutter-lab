@@ -4,6 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -94,51 +99,78 @@ private fun DriverScreen() {
         "completed" -> "Finalizar viagem"
         else -> ""
     }
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Alce Yatri • Motorista", style = MaterialTheme.typography.headlineMedium)
-                Text("Laboratório: sem corridas reais.")
-                Text("Disponibilidade: ${if (online) "online" else "offline"}")
-                Text("Corrida: $status")
-                if (message != null) Text(message!!, color = MaterialTheme.colorScheme.error)
-                if (!connected) {
-                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Usuário de testes") })
-                    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Senha de testes") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
-                    Button(enabled = username.isNotBlank() && password.isNotBlank(), onClick = {
-                        busy = true
-                        scope.launch {
-                            try {
-                                withContext(Dispatchers.IO) { api("GET", "/health", username, password) }
-                                connected = true
-                                message = null
-                            } catch (e: Exception) { message = "Falha na conexão: ${e.message}" }
-                            finally { busy = false }
+    val pink = Color(0xFFFF00BE)
+    val statusLabel = when (status) {
+        "requested" -> "Nova solicitação"
+        "accepted" -> "A caminho do passageiro"
+        "driver_arrived" -> "Aguardando embarque"
+        "in_progress" -> "Viagem em andamento"
+        "completed" -> "Viagem concluída"
+        "cancelled" -> "Corrida cancelada"
+        else -> "Nenhuma corrida no momento"
+    }
+    MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF7954A7), secondary = pink)) {
+        Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF8F7FB)) {
+            Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("ALCE YATRI", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                Text("Painel do motorista", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
+                Surface(color = if (online) Color(0xFFE7F7EF) else Color(0xFFECEAF2), shape = RoundedCornerShape(24.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(if (online) "● VOCÊ ESTÁ ONLINE" else "● VOCÊ ESTÁ OFFLINE", color = if (online) Color(0xFF16734B) else Color.DarkGray, fontWeight = FontWeight.Bold)
+                        Text(if (online) "Pronto para receber solicitações" else "Fique disponível para começar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        if (connected) Button(onClick = { online = !online; if (!online) ride = null }, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (online) "Ficar offline" else "Ficar disponível")
                         }
-                    }) { Text("Conectar à API") }
+                    }
                 }
-                if (connected) Button(onClick = { online = !online; if (!online) ride = null }) {
-                    Text(if (online) "Ficar offline" else "Ficar disponível")
+                Surface(color = Color.White, shape = RoundedCornerShape(24.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("CORRIDA ATUAL", color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+                        Text(statusLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        if (ride != null) Text("ID: ${ride?.optString("id")}", style = MaterialTheme.typography.bodySmall)
+                        if (online && connected) {
+                            OutlinedButton(onClick = { refreshKey++ }, modifier = Modifier.fillMaxWidth()) { Text("Atualizar corrida") }
+                            if (next != null) {
+                                val id = ride?.optString("id") ?: ""
+                                Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            val result = withContext(Dispatchers.IO) {
+                                                api("POST", "/rides/$id/status", username, password, JSONObject().put("status", next))
+                                            }
+                                            ride = result.getJSONObject("ride")
+                                            message = null
+                                        } catch (e: Exception) {
+                                            message = "Alteração não confirmada. Atualize antes de tentar novamente: ${e.message}"
+                                        } finally { busy = false }
+                                    }
+                                }) { Text(label) }
+                            }
+                        }
+                    }
                 }
-                if (online && connected) {
-                    OutlinedButton(onClick = { refreshKey++ }) { Text("Atualizar") }
-                    if (next != null) {
-                        val id = ride?.optString("id") ?: ""
-                        Button(enabled = !busy, onClick = {
+                if (!connected) Surface(color = Color.White, shape = RoundedCornerShape(24.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Acesso ao laboratório", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Usuário de testes") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Senha de testes") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+                        Button(enabled = !busy && username.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth(), onClick = {
                             busy = true
                             scope.launch {
                                 try {
-                                    val result = withContext(Dispatchers.IO) {
-                                        api("POST", "/rides/$id/status", username, password, JSONObject().put("status", next))
-                                    }
-                                    ride = result.getJSONObject("ride")
+                                    withContext(Dispatchers.IO) { api("GET", "/health", username, password) }
+                                    connected = true
                                     message = null
-                                } catch (e: Exception) { message = "Não foi possível confirmar a alteração. Atualize antes de tentar novamente: ${e.message}" }
+                                } catch (e: Exception) { message = "Falha na conexão: ${e.message}" }
                                 finally { busy = false }
                             }
-                        }) { Text(label) }
+                        }) { Text("Conectar à API") }
                     }
                 }
+                if (message != null) Text(message!!, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.weight(1f))
+                Text("AMBIENTE DE TESTES • SEM CORRIDAS REAIS", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
         }
     }
