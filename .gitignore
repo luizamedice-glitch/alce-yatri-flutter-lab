@@ -1,0 +1,14 @@
+reference/
+**/*.apk
+**/*.aab
+**/*.apks
+**/*.xapk
+**/*.jks
+**/*.keystore
+.env
+.dart_tool/
+build/
+app/.flutter-plugins*
+app/.packages
+analysis/decompiled/
+analysis/apk_inventory.json
