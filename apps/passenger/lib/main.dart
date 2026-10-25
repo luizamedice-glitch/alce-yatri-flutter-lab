@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8080');
+const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://54-94-146-177.sslip.io');
 
 void main() => runApp(const PassengerApp());
 
@@ -25,6 +25,9 @@ class PassengerHome extends StatefulWidget {
 
 class _PassengerHomeState extends State<PassengerHome> {
   Timer? timer;
+  final username = TextEditingController(text: 'alce-teste');
+  final password = TextEditingController();
+  bool connected = false;
   Map<String, dynamic>? ride;
   String? error;
   bool busy = false;
@@ -32,8 +35,7 @@ class _PassengerHomeState extends State<PassengerHome> {
   @override
   void initState() {
     super.initState();
-    refresh();
-    timer = Timer.periodic(const Duration(seconds: 3), (_) => refresh());
+
   }
 
   Future<Map<String, dynamic>> request(String method, String path, [Map<String, dynamic>? body]) async {
@@ -41,13 +43,30 @@ class _PassengerHomeState extends State<PassengerHome> {
     try {
       final req = await client.openUrl(method, Uri.parse('$apiUrl$path'));
       req.headers.contentType = ContentType.json;
+      req.headers.set(HttpHeaders.authorizationHeader, 'Basic ${base64Encode(utf8.encode('${username.text}:${password.text}'))}');
       if (body != null) req.write(jsonEncode(body));
       final res = await req.close().timeout(const Duration(seconds: 8));
-      final decoded = jsonDecode(await res.transform(utf8.decoder).join()) as Map<String, dynamic>;
+      final raw = await res.transform(utf8.decoder).join();
+      if (res.statusCode == 401) throw const HttpException('Credenciais incorretas (401)');
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
       if (res.statusCode >= 400) throw HttpException('HTTP ${res.statusCode}: ${decoded['error']}');
       return decoded;
     } finally {
       client.close(force: true);
+    }
+  }
+
+  Future<void> connect() async {
+    if (username.text.isEmpty || password.text.isEmpty) return;
+    try {
+      await request('GET', '/health');
+      if (!mounted) return;
+      setState(() { connected = true; error = null; });
+      timer?.cancel();
+      timer = Timer.periodic(const Duration(seconds: 3), (_) => refresh());
+      await refresh();
+    } catch (e) {
+      if (mounted) setState(() => error = 'Falha na conexão: $e');
     }
   }
 
@@ -73,7 +92,7 @@ class _PassengerHomeState extends State<PassengerHome> {
   }
 
   @override
-  void dispose() { timer?.cancel(); super.dispose(); }
+  void dispose() { timer?.cancel(); username.dispose(); password.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -86,12 +105,17 @@ class _PassengerHomeState extends State<PassengerHome> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Laboratório: corridas simuladas via API compartilhada.'),
           const SizedBox(height: 12),
+          if (!connected) ...[
+            TextField(controller: username, decoration: const InputDecoration(labelText: 'Usuário de testes')),
+            TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Senha de testes')),
+            FilledButton(onPressed: connect, child: const Text('Conectar à API')),
+          ],
           Text('Estado: $status', style: Theme.of(context).textTheme.titleLarge),
           if (ride != null) Text('Corrida: ${ride!['id']}'),
           if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
           const SizedBox(height: 20),
-          FilledButton(onPressed: busy || active ? null : createRide, child: const Text('Solicitar corrida de teste')),
-          OutlinedButton(onPressed: refresh, child: const Text('Atualizar status')),
+          FilledButton(onPressed: !connected || busy || active ? null : createRide, child: const Text('Solicitar corrida de teste')),
+          OutlinedButton(onPressed: connected ? refresh : null, child: const Text('Atualizar status')),
         ]),
       ),
     );
