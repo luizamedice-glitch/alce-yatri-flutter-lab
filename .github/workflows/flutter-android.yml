@@ -4,6 +4,16 @@ on:
     branches: [main]
   workflow_dispatch:
 jobs:
+  mock-api:
+    name: Mock ride API tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test mock API
+        run: cd backend/mock && npm test
   passenger:
     name: Passenger Flutter debug
     runs-on: ubuntu-latest
