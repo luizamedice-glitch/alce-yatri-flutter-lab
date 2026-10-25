@@ -1,32 +1,32 @@
-# Alce Yatri Flutter Lab
+# Alce Yatri — Laboratório Android
 
-Laboratório independente para análise técnica do Te Levo Mobile 28.9 e desenvolvimento de um protótipo Flutter comparativo.
+Repositório de prototipagem independente, com **passageiro Flutter** e **motorista Android nativo (Kotlin)**. Os dois clientes compartilham contratos de API, não código de interface.
 
-## Escopo e isolamento
-- O projeto PureScript/PrestoDom `namma-yatri-br.` não será modificado.
-- APKs de terceiros, código descompilado, credenciais e recursos proprietários não serão publicados.
-- Protótipo com dados fictícios e serviços próprios; nenhuma conexão a APIs privadas de terceiros.
+## Isolamento e uso responsável
+- Não modificar `luizamedice-glitch/namma-yatri-br.` (PureScript/PrestoDom).
+- APKs de terceiros são apenas referências de análise local. Não publicar APKs, código descompilado, recursos proprietários ou segredos.
+- Nenhum acesso a APIs privadas de terceiros; backend próprio ou simulado.
 
-## Ferramentas
-- Flutter SDK e Android SDK para compilar o aplicativo.
-- REA: https://github.com/morluto/rea
-- JADX, JDK e Apktool conforme os objetivos da análise.
-
-## Preparação (Linux)
-Execute `bash scripts/setup.sh` após instalar Flutter/Android SDK e Node.js compatível com REA. O script cria o projeto Flutter local e executa o setup interativo do REA. Revise as mudanças antes de aprovar.
-
-## APK de referência
-Guarde o ZIP extraído localmente em `reference/te-levo-28.9.zip` (ignorado pelo Git).
-Execute `python3 scripts/inventory.py reference/te-levo-28.9.zip`.
-
-## Compilação
-```bash
-cd app
-flutter pub get
-flutter build apk --debug
+## Organização
+```
+apps/passenger/       # Flutter, Android
+apps/driver/          # Android nativo, Kotlin (Jetpack Compose)
+contracts/            # Esquemas e estados de corrida, independentes de linguagem
+backend/mock/         # Backend de testes a implementar
+docs/                 # Inventários e resultados da análise REA
+scripts/              # Preparação do ambiente
 ```
 
-A compilação exige que o diretório `app/` tenha sido criado e versionado. O workflow do GitHub Actions não compila até isso acontecer.
+## Preparação
+`bash scripts/setup.sh` cria o esqueleto Flutter do passageiro, se o Flutter estiver instalado, e prepara a análise REA com Node.js compatível. O motorista é um projeto Gradle/Kotlin próprio: não execute `flutter create` em `apps/driver`.
 
-## Plano
-Veja `docs/analysis-plan.md` para fases e critérios de evidência.
+## Compilação
+- Passageiro: `cd apps/passenger && flutter pub get && flutter build apk --debug`.
+- Motorista: `cd apps/driver && ./gradlew assembleDebug` **após criar e versionar o projeto Android/Gradle**.
+
+A estrutura inicial não contém ainda os projetos completos nem gera APKs. O workflow CI separa as compilações e informa quando cada projeto ainda não existe.
+
+## Documentação
+- `docs/analysis-plan.md`
+- `docs/driver-apk-25.10.md`
+- `docs/android-driver-architecture.md`
