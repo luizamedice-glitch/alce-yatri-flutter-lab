@@ -16,7 +16,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-private const val API_URL = BuildConfig.API_URL
+private val API_URL = BuildConfig.API_URL
 
 private fun api(method: String, path: String, body: JSONObject? = null): JSONObject {
     val connection = (URL("$API_URL$path").openConnection() as HttpURLConnection)
