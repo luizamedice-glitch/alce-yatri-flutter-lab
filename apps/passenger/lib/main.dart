@@ -31,6 +31,8 @@ class _PassengerHomeState extends State<PassengerHome> {
   Map<String, dynamic>? ride;
   String? error;
   bool busy = false;
+  int consecutiveFailures = 0;
+  bool refreshing = false;
 
   @override
   void initState() {
@@ -71,11 +73,15 @@ class _PassengerHomeState extends State<PassengerHome> {
   }
 
   Future<void> refresh() async {
+    if (refreshing) return;
+    refreshing = true;
     try {
       final data = await request('GET', '/rides/current');
-      if (mounted) setState(() { ride = data['ride'] as Map<String, dynamic>?; error = null; });
+      if (mounted) setState(() { ride = data['ride'] as Map<String, dynamic>?; error = null; consecutiveFailures = 0; });
     } catch (e) {
-      if (mounted) setState(() => error = 'API indisponível: $e');
+      if (mounted) setState(() { consecutiveFailures++; error = consecutiveFailures >= 2 ? 'Conexão instável. Tentando reconectar automaticamente…' : null; });
+    } finally {
+      refreshing = false;
     }
   }
 
@@ -85,7 +91,7 @@ class _PassengerHomeState extends State<PassengerHome> {
       final data = await request('POST', '/rides', {});
       if (mounted) setState(() { ride = data['ride'] as Map<String, dynamic>; error = null; });
     } catch (e) {
-      if (mounted) setState(() => error = 'Não foi possível solicitar: $e');
+      if (mounted) setState(() => error = 'Não foi possível confirmar a solicitação. Atualize o status antes de tentar novamente: $e');
     } finally {
       if (mounted) setState(() => busy = false);
     }
