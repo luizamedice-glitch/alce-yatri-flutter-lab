@@ -16,7 +16,7 @@ android {
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig {
         val apiUrl = providers.gradleProperty("apiUrl").orElse("http://10.0.2.2:8080").get()
-        buildConfigField("String", "API_URL", "\\\"$apiUrl\\\"")
+        buildConfigField("String", "API_URL", "\"$apiUrl\"")
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
