@@ -42,5 +42,5 @@ function createServer() {
     return respond(res,404,{error:'not_found'});
   });
 }
-if (require.main === module) createServer().listen(Number(process.env.PORT || 8080),'0.0.0.0',()=>console.log('Mock API listening'));
+if (require.main === module) createServer().listen(Number(process.env.PORT || 8080),'127.0.0.1',()=>console.log('Mock API listening'));
 module.exports = {createServer};
