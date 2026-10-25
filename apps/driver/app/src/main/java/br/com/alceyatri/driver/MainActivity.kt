@@ -15,15 +15,18 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import android.util.Base64
 
 private val API_URL = BuildConfig.API_URL
 
-private fun api(method: String, path: String, body: JSONObject? = null): JSONObject {
+private fun api(method: String, path: String, user: String, password: String, body: JSONObject? = null): JSONObject {
     val connection = (URL("$API_URL$path").openConnection() as HttpURLConnection)
     connection.requestMethod = method
     connection.connectTimeout = 5000
     connection.readTimeout = 8000
     connection.setRequestProperty("Content-Type", "application/json")
+    val credentials = Base64.encodeToString("$user:$password".toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+    connection.setRequestProperty("Authorization", "Basic $credentials")
     if (body != null) {
         connection.doOutput = true
         connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
@@ -31,7 +34,9 @@ private fun api(method: String, path: String, body: JSONObject? = null): JSONObj
     return try {
         val code = connection.responseCode
         val stream = if (code < 400) connection.inputStream else connection.errorStream
-        val result = JSONObject(stream.bufferedReader().use { it.readText() })
+        val raw = stream.bufferedReader().use { it.readText() }
+        if (code == 401) error("Credenciais incorretas (401)")
+        val result = JSONObject(raw)
         if (code >= 400) error("HTTP $code: ${result.optString("error")}")
         result
     } finally { connection.disconnect() }
@@ -47,6 +52,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DriverScreen() {
     var online by remember { mutableStateOf(false) }
+    var connected by remember { mutableStateOf(false) }
+    var username by remember { mutableStateOf("alce-teste") }
+    var password by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
     var ride by remember { mutableStateOf<JSONObject?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -56,7 +65,7 @@ private fun DriverScreen() {
         if (online) {
             while (true) {
                 try {
-                    val response = withContext(Dispatchers.IO) { api("GET", "/rides/current") }
+                    val response = withContext(Dispatchers.IO) { api("GET", "/rides/current", username, password) }
                     ride = response.optJSONObject("ride")
                     message = null
                 } catch (e: Exception) { message = "API indisponível: ${e.message}" }
@@ -88,20 +97,34 @@ private fun DriverScreen() {
                 Text("Disponibilidade: ${if (online) "online" else "offline"}")
                 Text("Corrida: $status")
                 if (message != null) Text(message!!, color = MaterialTheme.colorScheme.error)
-                Button(onClick = { online = !online; if (!online) ride = null }) {
+                if (!connected) {
+                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Usuário de testes") })
+                    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Senha de testes") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                    Button(enabled = username.isNotBlank() && password.isNotBlank(), onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) { api("GET", "/health", username, password) }
+                                connected = true
+                                message = null
+                            } catch (e: Exception) { message = "Falha na conexão: ${e.message}" }
+                            finally { busy = false }
+                        }
+                    }) { Text("Conectar à API") }
+                }
+                if (connected) Button(onClick = { online = !online; if (!online) ride = null }) {
                     Text(if (online) "Ficar offline" else "Ficar disponível")
                 }
-                if (online) {
+                if (online && connected) {
                     OutlinedButton(onClick = { refreshKey++ }) { Text("Atualizar") }
                     if (next != null) {
                         val id = ride?.optString("id") ?: ""
-                        val scope = rememberCoroutineScope()
                         Button(enabled = !busy, onClick = {
                             busy = true
                             scope.launch {
                                 try {
                                     val result = withContext(Dispatchers.IO) {
-                                        api("POST", "/rides/$id/status", JSONObject().put("status", next))
+                                        api("POST", "/rides/$id/status", username, password, JSONObject().put("status", next))
                                     }
                                     ride = result.getJSONObject("ride")
                                     message = null
