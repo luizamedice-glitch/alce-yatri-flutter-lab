@@ -1,0 +1,9 @@
+54-94-146-177.sslip.io {
+    basic_auth {
+        passageiro-teste REPLACE_WITH_PASSENGER_PASSWORD_HASH
+        motorista-teste REPLACE_WITH_DRIVER_PASSWORD_HASH
+    }
+    reverse_proxy 127.0.0.1:8080 {
+        header_up X-Alce-User {http.auth.user.id}
+    }
+}

@@ -11,3 +11,7 @@ After GitHub Actions successfully builds both clients, download and install the 
 The mock server stores only one ride in memory; restarting the Node.js process clears it. This environment has no real driver identity, rider identity, matching, persistent data, payment processing, or production security. HTTP Basic authentication is only a temporary lab gate. Replace it with individual identities and scoped tokens before any real use.
 
 Ensure Lightsail allows TCP 80/443, not public TCP 8080. Backend listens on loopback. Protect the SSH key and restrict port 22 to trusted source addresses where possible.
+
+## Role-based backend update
+
+The v0.2 backend requires separate authenticated accounts and the trusted Caddy identity header. The shared `alce-teste` instructions above describe the previous deployment and no longer apply after this update. Follow [backend-rules-deployment.md](backend-rules-deployment.md) before deploying; see [the API contract](../contracts/ride-api.md) for permissions and limitations.
