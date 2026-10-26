@@ -1,0 +1,11 @@
+{
+  "id": "lab-driver-giselo",
+  "name": "Motorista Giselo",
+  "testOnly": true,
+  "vehicle": {
+    "make": "Volkswagen",
+    "model": "Virtus",
+    "color": "Branco",
+    "plate": "ITQ-5799"
+  }
+}

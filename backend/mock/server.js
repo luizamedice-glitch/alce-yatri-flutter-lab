@@ -1,7 +1,8 @@
 const http = require('node:http');
 const { randomUUID } = require('node:crypto');
+const giselo = require('./fixtures/driver-giselo.json');
 
-function createServer() {
+function createServer({ enableDriverTestProfile = false } = {}) {
   let ride = null;
   const transitions = {
     requested: ['accepted', 'cancelled'],
@@ -21,6 +22,9 @@ function createServer() {
     }
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname === '/health' && req.method === 'GET') return respond(res,200,{ok:true});
+    if (enableDriverTestProfile && url.pathname === '/lab/driver' && req.method === 'GET') {
+      return respond(res,200,{driver:giselo,scope:'laboratory'});
+    }
     if (url.pathname === '/rides/current' && req.method === 'GET') return respond(res,200,{ride});
     if (url.pathname === '/rides' && req.method === 'POST') {
       if (ride && !['completed','cancelled'].includes(ride.status)) return respond(res,409,{error:'active_ride_exists'});
@@ -35,12 +39,13 @@ function createServer() {
         for await (const chunk of req) { raw += chunk; if (raw.length > 2048) return respond(res,413,{error:'body_too_large'}); }
         const next = JSON.parse(raw).status;
         if (!transitions[ride.status].includes(next)) return respond(res,409,{error:'invalid_transition',current:ride.status});
-        ride = {...ride,status:next,updatedAt:new Date().toISOString()};
+        ride = {...ride,status:next,updatedAt:new Date().toISOString(),
+          ...(enableDriverTestProfile && next === 'accepted' ? {driver:giselo} : {})};
         return respond(res,200,{ride});
       } catch { return respond(res,400,{error:'invalid_json'}); }
     }
     return respond(res,404,{error:'not_found'});
   });
 }
-if (require.main === module) createServer().listen(Number(process.env.PORT || 8080),'127.0.0.1',()=>console.log('Mock API listening'));
+if (require.main === module) createServer({enableDriverTestProfile:process.env.ENABLE_DRIVER_TEST_PROFILE === 'true'}).listen(Number(process.env.PORT || 8080),'127.0.0.1',()=>console.log('Mock API listening'));
 module.exports = {createServer};
